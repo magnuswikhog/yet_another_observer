@@ -1,6 +1,6 @@
 name: yet_another_observer
 description: Need to retrofit some observers to your existing code base? This plugin can help!
-version: 0.0.1
+version: 1.0.0
 homepage: https://github.com/magnuswikhog/yet_another_observer
 
 environment:
@@ -15,5 +15,6 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^1.0.0
+  collection:
 
 flutter:
