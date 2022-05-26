@@ -51,13 +51,16 @@ class _MyHomePageState extends State<MyHomePage> with YAObserverStatefulMixin{
 
     _counterObserver = observe<int>(
         ()=>_counter,
+        maxHistoryLength: 1,
+        updateImmediately: true,
+        fireOnFirstUpdate: false,
         onChanged: (event){
           if( event.value == 3 ){
             scheduleMicrotask(
               () => showDialog(
                 context: context,
                 builder: (ctx) => AlertDialog(
-                  title: Text('${event.previous!.value} ---> ${event.value}'),
+                  title: Text('${event.history[0].value} ---> ${event.value}'),
                   content: const Text(
                     'This dialog was shown from an observer that '
                     'observes the number on every rebuild. When the observed number '

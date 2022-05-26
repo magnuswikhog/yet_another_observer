@@ -1,22 +1,49 @@
 library yet_another_observer;
 
+import 'dart:math';
+
 import 'package:flutter/widgets.dart';
 
 
 typedef YAObserverChanged<V> = void Function(YAObserverEvent<V> event);
+typedef YAComparator<V> = bool Function(V previous, V current);
 typedef YAValueGetter<V> = V Function();
 
-/// This class represents a change event in an observer.
-class YAObserverEvent<V>{
+class YAObserverEventHistoryEntry<V>{
   final V value;
-  final DateTime? changeTime;
-  final YAObserverEvent<V>? previous;
+  final DateTime changeTime;
 
-  YAObserverEvent(this.value, this.changeTime, this.previous);
+  YAObserverEventHistoryEntry(this.value, this.changeTime);
 
   @override
   String toString() {
-    return 'YAObserverEvent<$V>{value: $value, changeTime: $changeTime, previous: $previous}';
+    return 'YAObserverEventHistoryEntry<$V>{value: $value, changeTime: $changeTime}';
+  }
+}
+
+
+/// This class represents a change event in an observer.
+///
+/// [value] is the current value of the observed variable or expression.
+///
+/// [changeTime] is the time when the change was detected (not necessarily the exact time
+/// when the variables value was changed - it will be the time when the [update] method of
+/// the observer was executed).
+///
+/// [history] contains a list of past events. The maximum number of historical events to
+/// keep is defined when constructing the observer. The latest historical event will be at
+/// index `0`, the one before that at index `1`, and so on.
+class YAObserverEvent<V>{
+  final V value;
+  final DateTime changeTime;
+  final List<YAObserverEventHistoryEntry<V>> history;
+
+  YAObserverEvent(this.value, this.changeTime, {this.history=const []});
+
+
+  @override
+  String toString() {
+    return 'YAObserverEvent<$V>{value: $value, changeTime: $changeTime, history: $history}';
   }
 }
 
@@ -25,10 +52,17 @@ class YAObserver<V>{
   final bool _fireOnFirstUpdate;
   YAObserverEvent<V>? _lastEvent;
 
+  final int maxHistoryLength;
   final YAValueGetter<V> getValue;
   final YAObserverChanged<V> onChanged;
+  final YAComparator<V> comparator;
 
   /// Creates an observer that triggers [onChanged] whenever the value returned from [getValue] changes.
+  ///
+  /// If [comparator] is specified and non-null, it will be used by the [update] method to determine
+  /// if the value has changed. This is especially useful when comparing objects that can't be properly
+  /// compared using the `==` operator, such as `List`'s and other collections. The default behaviour
+  /// if [comparator] is null is to simply compare the old and new value using `==`.
   ///
   /// If [updateImmediately] is true, [getValue] will be invoked immediately to get the initial value.
   /// If false, [getValue] won't be invoked until you call [update].
@@ -40,11 +74,16 @@ class YAObserver<V>{
   /// initial value and [onChanged] will be executed with that value. If they are both false, the first
   /// call to [update] will get the initial value, and [onChange] won't be triggered until the second
   /// call to [update] (if the value has changed since the first call).
-  YAObserver(this.getValue, {required this.onChanged, bool updateImmediately=true, bool fireOnFirstUpdate=false})
-    : _fireOnFirstUpdate = fireOnFirstUpdate
+  ///
+  /// [maxHistoryLength] specifies the number of previous events to include in the `history` of the
+  /// event passed to [onChanged]. It can be used to keep track of which previous changes have happened
+  /// and at which moments in time.
+  YAObserver(this.getValue, {required this.onChanged, YAComparator<V>? comparator, bool updateImmediately=true, bool fireOnFirstUpdate=false, this.maxHistoryLength=0})
+    : _fireOnFirstUpdate = fireOnFirstUpdate, comparator = comparator ?? ((previous, current) => current == previous)
   {
+
     if( updateImmediately ) {
-      _lastEvent = YAObserverEvent<V>(getValue(), null, null);
+      _lastEvent = YAObserverEvent<V>(getValue(), DateTime.now());
 
       if( _fireOnFirstUpdate ){
         onChanged(_lastEvent!);
@@ -60,19 +99,24 @@ class YAObserver<V>{
   void update(){
     V value = getValue();
 
-    if( _lastEvent == null || value != _lastEvent!.value ){
-      // Remove previous from _lastEvent so we don't end up with a chain of events
-      if( _lastEvent?.previous != null ){
-        _lastEvent = YAObserverEvent(_lastEvent!.value, _lastEvent?.changeTime, null);
+    if( _lastEvent == null || !comparator(_lastEvent!.value, value) ){
+      List<YAObserverEventHistoryEntry<V>> history = _lastEvent?.history ?? List.unmodifiable([]);
+
+      // Add _lastEvent to history and truncate it to maxHistoryLength
+      if( _lastEvent != null && maxHistoryLength > 0 ){
+        history = List<YAObserverEventHistoryEntry<V>>.unmodifiable([
+          YAObserverEventHistoryEntry<V>(_lastEvent!.value, _lastEvent!.changeTime),
+          ...history.getRange(0, min(maxHistoryLength-1, history.length))
+        ]);
       }
 
-      YAObserverEvent<V> event = YAObserverEvent<V>(value, DateTime.now(), _lastEvent);
+      YAObserverEvent<V> event = YAObserverEvent<V>(value, DateTime.now(), history: history);
 
-      if( _lastEvent != null || _fireOnFirstUpdate ) {
+      if( _fireOnFirstUpdate || _lastEvent != null ) {
         onChanged(event);
       }
 
-      _lastEvent = YAObserverEvent<V>(event.value, event.changeTime, _lastEvent);
+      _lastEvent = event;
     }
   }
 }
@@ -88,9 +132,9 @@ class YAObserverManager{
   /// observer in calls to [update] and [remove].
   ///
   /// Returns the added observer.
-  YAObserver<V> add<V>(YAValueGetter<V> getValue, YAObserverChanged<V> onChanged, {dynamic tag, bool updateImmediately=false, bool fireOnFirstUpdate=false}){
+  YAObserver<V> add<V>(YAValueGetter<V> getValue, YAObserverChanged<V> onChanged, {dynamic tag, bool updateImmediately=false, bool fireOnFirstUpdate=false, int maxHistoryLength=0}){
     tag ??= getValue;
-    YAObserver<V> observer = YAObserver<V>(getValue, onChanged: onChanged, updateImmediately: updateImmediately, fireOnFirstUpdate: fireOnFirstUpdate);
+    YAObserver<V> observer = YAObserver<V>(getValue, onChanged: onChanged, updateImmediately: updateImmediately, fireOnFirstUpdate: fireOnFirstUpdate, maxHistoryLength: maxHistoryLength);
     _observers[tag] = observer;
     return observer;
   }
@@ -133,8 +177,8 @@ mixin YAObserverStatefulMixin<T extends StatefulWidget> on State<T>{
   ///
   /// **IMPORTANT**: You must call [super.build()] from your [build] method, otherwise
   /// the values of the observers will not be automatically updated!
-  YAObserver<V> observe<V>(YAValueGetter<V> getValue, {required YAObserverChanged<V> onChanged, dynamic tag, bool updateImmediately=false, bool fireOnFirstUpdate=false}){
-    return _observerManager.add(getValue, onChanged, tag: tag, updateImmediately: updateImmediately, fireOnFirstUpdate: fireOnFirstUpdate);
+  YAObserver<V> observe<V>(YAValueGetter<V> getValue, {required YAObserverChanged<V> onChanged, dynamic tag, bool updateImmediately=false, bool fireOnFirstUpdate=false, int maxHistoryLength=0}){
+    return _observerManager.add(getValue, onChanged, tag: tag, updateImmediately: updateImmediately, fireOnFirstUpdate: fireOnFirstUpdate, maxHistoryLength: maxHistoryLength);
   }
 
   @override
