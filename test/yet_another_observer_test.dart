@@ -217,9 +217,9 @@ void main() async {
     });
 
 
-    /// When comparing a non-scalar value, special care must be taken so that the comparator compares the
+    /// When comparing a non-scalar value, special care must be taken so that the hasChanged function compares the
     /// values for equality and not identity!
-    test('List<String> doesn\'t work without a custom comparator', () {
+    test('List<String> doesn\'t work without a custom hasChanged', () {
       List<String> value = ['abc'];
       List<String> result = [];
 
@@ -242,9 +242,9 @@ void main() async {
     });
 
 
-    /// When comparing a non-scalar value, special care must be taken so that the comparator compares the
+    /// When comparing a non-scalar value, special care must be taken so that the hasChanged function compares the
     /// values for equality and not identity!
-    test('List<String> works with a custom comparator and toList()', () {
+    test('List<String> works with a custom hasChanged and toList()', () {
       List<String> value = ['abc'];
       List<String> result = [];
 
@@ -254,7 +254,7 @@ void main() async {
 
       YAObserver observer = YAObserver<List<String>>(
           ()=>value,
-        comparator: (old, current) => const ListEquality().equals(old, current),
+        hasChanged: (old, current) => !const ListEquality().equals(old, current),
         onChanged: onChanged,
         fireOnFirstUpdate: true
       );
@@ -307,7 +307,7 @@ void main() async {
       onChanged: (event){
         output += 'The list changed from ${event.history[0].value} to ${event.value}.\n';
       },
-      comparator: (old, current) => const ListEquality().equals(old, current),
+      hasChanged: (old, current) => !const ListEquality().equals(old, current),
       maxHistoryLength: 1,
       updateImmediately: true,
       fireOnFirstUpdate: false

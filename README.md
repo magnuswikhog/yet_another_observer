@@ -101,7 +101,7 @@ The list changed from [123] to [123, foobar].
 ```
 
 The problem is that we're comparing `List` instances and not their actual contents. This problem can be 
-solved by supplying a custom comparator function to the observer. To achieve the desired result, there 
+solved by supplying a custom `hasChanged` function to the observer. To achieve the desired result, there 
 are a number of options. 
 
 First, you could convert the `List` into a scalar value, for example by JSON-encoding it or simply
@@ -120,7 +120,7 @@ YAObserver observer = YAObserver<List<String>>(
   onChanged: (event){
     print('The list changed from ${event.history[0].value} to ${event.value}.');
   },
-  comparator: (old, current) => const ListEquality().equals(old, current),
+  hasChanged: (old, current) => ! const ListEquality().equals(old, current),
   maxHistoryLength: 1,
   updateImmediately: true,
   fireOnFirstUpdate: false

@@ -52,14 +52,14 @@ class YAObserver<V> {
   final int maxHistoryLength;
   final YAValueGetter<V> getValue;
   final YAObserverChanged<V> onChanged;
-  final YAComparator<V> comparator;
+  final YAComparator<V> hasChanged;
 
   /// Creates an observer that triggers [onChanged] whenever the value returned from [getValue] changes.
   ///
-  /// If [comparator] is specified and non-null, it will be used by the [update] method to determine
+  /// If [hasChanged] is specified and non-null, it will be used by the [update] method to determine
   /// if the value has changed. This is especially useful when comparing objects that can't be properly
   /// compared using the `==` operator, such as `List`'s and other collections. The default behaviour
-  /// if [comparator] is null is to simply compare the old and new value using `==`.
+  /// if [hasChanged] is null is to simply compare the old and new value using `==`.
   ///
   /// If [updateImmediately] is true, [getValue] will be invoked immediately to get the initial value.
   /// If false, [getValue] won't be invoked until you call [update].
@@ -77,13 +77,13 @@ class YAObserver<V> {
   /// and at which moments in time.
   YAObserver(this.getValue,
       {required this.onChanged,
-      YAComparator<V>? comparator,
+      YAComparator<V>? hasChanged,
       bool updateImmediately = true,
       bool fireOnFirstUpdate = false,
       this.maxHistoryLength = 0})
       : _fireOnFirstUpdate = fireOnFirstUpdate,
-        comparator =
-            comparator ?? ((previous, current) => current == previous) {
+        hasChanged =
+            hasChanged ?? ((previous, current) => current != previous) {
     if (updateImmediately) {
       _lastEvent = YAObserverEvent<V>(getValue(), DateTime.now());
 
@@ -100,7 +100,7 @@ class YAObserver<V> {
   void update() {
     V value = getValue();
 
-    if (_lastEvent == null || !comparator(_lastEvent!.value, value)) {
+    if (_lastEvent == null || hasChanged(_lastEvent!.value, value)) {
       List<YAObserverEventHistoryEntry<V>> history =
           _lastEvent?.history ?? List.unmodifiable([]);
 
@@ -139,13 +139,14 @@ class YAObserverManager {
       YAValueGetter<V> getValue,
       {required YAObserverChanged<V> onChanged,
       dynamic tag,
-      YAComparator<V>? comparator,
+      YAComparator<V>? hasChanged,
       bool updateImmediately = true,
       bool fireOnFirstUpdate = false,
       int maxHistoryLength = 0}) {
     tag ??= getValue;
     YAObserver<V> observer = YAObserver<V>(getValue,
         onChanged: onChanged,
+        hasChanged: hasChanged,
         updateImmediately: updateImmediately,
         fireOnFirstUpdate: fireOnFirstUpdate,
         maxHistoryLength: maxHistoryLength);
@@ -191,11 +192,13 @@ mixin YAObserverStatefulMixin<T extends StatefulWidget> on State<T> {
   YAObserver<V> observe<V>(YAValueGetter<V> getValue,
       {required YAObserverChanged<V> onChanged,
       dynamic tag,
-      YAComparator<V>? comparator,
+      YAComparator<V>? hasChanged,
       bool updateImmediately = true,
       bool fireOnFirstUpdate = false,
       int maxHistoryLength = 0}) {
-    return _observerManager.add(getValue, onChanged: onChanged,
+    return _observerManager.add(getValue,
+        onChanged: onChanged,
+        hasChanged: hasChanged,
         tag: tag,
         updateImmediately: updateImmediately,
         fireOnFirstUpdate: fireOnFirstUpdate,
