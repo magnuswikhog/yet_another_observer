@@ -227,7 +227,7 @@ void main() async {
         result = event.value;
       }, count: 1);
 
-      YAObserver observer = YAObserver(()=>value, onChanged: onChanged, fireOnFirstUpdate: true);
+      YAObserver observer = YAObserver(()=>value.toList(), onChanged: onChanged, fireOnFirstUpdate: true);
       observer.update();
       expect(result == ['abc'], false);
 
@@ -253,7 +253,7 @@ void main() async {
       }, count: 2);
 
       YAObserver observer = YAObserver<List<String>>(
-          ()=>value,
+          ()=>value.toList(),
         hasChanged: (old, current) => !const ListEquality().equals(old, current),
         onChanged: onChanged,
         fireOnFirstUpdate: true
@@ -277,7 +277,7 @@ void main() async {
     List<String> myList = ['abc'];
 
     YAObserver observer = YAObserver<List<String>>(
-        () => myList,
+        () => myList.toList(),
       onChanged: (event){
         output += 'The list changed from ${event.history[0].value} to ${event.value}.\n';
       },
@@ -303,7 +303,7 @@ void main() async {
     List<String> myList = ['abc'];
 
     YAObserver observer = YAObserver<List<String>>(
-        () => myList,
+        () => myList.toList(),
       onChanged: (event){
         output += 'The list changed from ${event.history[0].value} to ${event.value}.\n';
       },

@@ -56,6 +56,41 @@ index `0`, the one before that at index `1`, and so on.
 
 ## Observing non-scalar values
 
+### 1. Getting the value
+
+The first problem that could arise is that if you supply an object as the value to be observed, 
+that same object instance could will end up being compared to itself! That's because the 
+observer stores the previous value and then checks it against the current value on the next
+update. 
+
+The solution is to always supply a unique instance to the value function. For example, if you want 
+to observe a `List`, instead of writing
+
+```dart
+YAObserver(
+  () => myList,
+  onChanged: (event){
+    // Might never be called, because both the old and current value might point  
+    // to the same list and thus appear (to the observer) to never change.
+  }
+)
+```
+
+you could write 
+```dart
+YAObserver(
+  () => myList.toList(),
+  onChanged: (event){
+  }
+)
+```
+
+The example above uses `toList()` to create a unique instance of the list, which gets stored as 
+the old value. The next time `update()` is called, the old value will be different from the
+current value. Which brings us to problem nr 2...
+
+### 2. Comparing previous and current value
+
 Some special care needs to be taken when observing non-scalar values, for example a `List`. 
 The observer will by default use the `==` operator to compare the previous and the current
 observed value.
@@ -66,7 +101,7 @@ Consider the following code:
 List<String> myList = ['abc'];
 
 YAObserver observer = YAObserver<List<String>>(
-  () => myList,
+  () => myList.toList(),
   onChanged: (event){
     print('The list changed from ${event.history[0].value} to ${event.value}.');
   },
@@ -132,6 +167,8 @@ will result in
 The list changed from [abc] to [123].
 The list changed from [123] to [123, foobar].
 ```
+
+
 
 ## Additional information
 
