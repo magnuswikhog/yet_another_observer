@@ -136,9 +136,11 @@ class YAObserverManager {
   ///
   /// Returns the added observer.
   YAObserver<V> add<V>(
-      YAValueGetter<V> getValue, YAObserverChanged<V> onChanged,
-      {dynamic tag,
-      bool updateImmediately = false,
+      YAValueGetter<V> getValue,
+      {required YAObserverChanged<V> onChanged,
+      dynamic tag,
+      YAComparator<V>? comparator,
+      bool updateImmediately = true,
       bool fireOnFirstUpdate = false,
       int maxHistoryLength = 0}) {
     tag ??= getValue;
@@ -189,10 +191,11 @@ mixin YAObserverStatefulMixin<T extends StatefulWidget> on State<T> {
   YAObserver<V> observe<V>(YAValueGetter<V> getValue,
       {required YAObserverChanged<V> onChanged,
       dynamic tag,
-      bool updateImmediately = false,
+      YAComparator<V>? comparator,
+      bool updateImmediately = true,
       bool fireOnFirstUpdate = false,
       int maxHistoryLength = 0}) {
-    return _observerManager.add(getValue, onChanged,
+    return _observerManager.add(getValue, onChanged: onChanged,
         tag: tag,
         updateImmediately: updateImmediately,
         fireOnFirstUpdate: fireOnFirstUpdate,
