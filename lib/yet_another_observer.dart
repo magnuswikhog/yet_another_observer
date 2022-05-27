@@ -180,7 +180,7 @@ class YAObserverManager {
 /// This mixin makes it easy to manage and update multiple observers from a
 /// StatefulWidget.
 ///
-/// **IMPORTANT**: You must call [super.build()] from your [build] method, otherwise
+/// **IMPORTANT**: You must call [updateObservers] from your [build] method, otherwise
 /// the values of the observers will not be automatically updated!
 mixin YAObserverStatefulMixin<T extends StatefulWidget> on State<T> {
   final YAObserverManager _observerManager = YAObserverManager();
@@ -205,18 +205,16 @@ mixin YAObserverStatefulMixin<T extends StatefulWidget> on State<T> {
         maxHistoryLength: maxHistoryLength);
   }
 
+  void updateObservers(){
+    _observerManager.update();
+  }
+
   @override
   void dispose() {
     _observerManager.remove();
     super.dispose();
   }
 
-  @mustCallSuper
-  @override
-  Widget build(BuildContext context) {
-    _observerManager.update();
-    return const _NullWidget();
-  }
 }
 
 /// A Widget that updates an observer whenever it is rebuilt.
@@ -259,17 +257,5 @@ class YAObserverManagerWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     _observerManager.update();
     return _child;
-  }
-}
-
-class _NullWidget extends StatelessWidget {
-  const _NullWidget();
-
-  @override
-  Widget build(BuildContext context) {
-    throw FlutterError(
-      'Widgets that mix YAObserverStatefulMixin into their State must '
-      'call super.build() but must ignore the return value of the superclass.',
-    );
   }
 }
